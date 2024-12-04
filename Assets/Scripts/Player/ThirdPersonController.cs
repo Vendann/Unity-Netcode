@@ -5,8 +5,6 @@ using Cinemachine;
 using UnityEngine.InputSystem;
 #endif
 
-/* Note: animations are called via the controller for both the character and capsule using animator null checks
- */
 
 namespace Triwoinmag {
     [RequireComponent(typeof(CharacterController))]
@@ -124,7 +122,6 @@ namespace Triwoinmag {
             }
         }
 
-        // Переменные для анимации движения
         NetworkVariable<float> _netVarAnimationBlend = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone,
             NetworkVariableWritePermission.Owner);
         NetworkVariable<float> _netVarInputMagnitude = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone,
@@ -159,11 +156,11 @@ namespace Triwoinmag {
             _fallTimeoutDelta = FallTimeout;
         }
 
-        public override void OnNetworkSpawn() { // Камеры у каждого игрока свои, поэтому нужен сетевой метод с соответствующей проверкой
-            if (!IsOwner) return; // Если мы не владелец, то ничего не делаем
-            if (_cineCamera == null) // Иначе смотрим, пустая ли переменная камеры
-                _cineCamera = FindObjectOfType<CinemachineVirtualCamera>(); // Если да, находим ее
-            _cineCamera.Follow = CinemachineCameraTarget.transform; // Устанавливаем цель для камеры из CinemachineCameraTarget (переменная где-то выше)
+        public override void OnNetworkSpawn() {
+            if (!IsOwner) return;
+            if (_cineCamera == null)
+                _cineCamera = FindObjectOfType<CinemachineVirtualCamera>();
+            _cineCamera.Follow = CinemachineCameraTarget.transform;
         }
 
         private void Update()
@@ -191,18 +188,13 @@ namespace Triwoinmag {
 
         private void GroundedCheck()
         {
-            // позиция сферы, которой мы проверяем касание земли
             Vector3 spherePosition = new Vector3(transform.position.x, transform.position.y - GroundedOffset,
                 transform.position.z);
-            // Создаем сферу в указанной позиции и проверяем, пересекается ли она с землей
             Grounded = Physics.CheckSphere(spherePosition, GroundedRadius, GroundLayers,
                 QueryTriggerInteraction.Ignore);
 
-            // Устанавливаем получившееся значение в аниматор
             if (_hasAnimator)
-            {
                 _animator.SetBool(_animIDGrounded, Grounded);
-            }
         }
 
         private void CameraRotation()
@@ -301,14 +293,14 @@ namespace Triwoinmag {
                 _animator.SetFloat(_animIDMotionSpeed, inputMagnitude);
             }
 
-            _netVarAnimationBlend.Value = _animationBlend; // Передаем переменные для анимации в NetworkVariables
+            _netVarAnimationBlend.Value = _animationBlend;
             _netVarInputMagnitude.Value = inputMagnitude;
         }
 
         private void JumpAndGravity()
         {
-            if (!IsOwner) { // Если мы не владелец объекта
-                if (_hasAnimator) // Указываем состояние персонажа для всех остальных клиентов
+            if (!IsOwner) {
+                if (_hasAnimator)
                 {
                     _animator.SetBool(_animIDJump, _input.NetVarJump.Value);
                 }
@@ -319,58 +311,47 @@ namespace Triwoinmag {
                 return;
             }
 
-            if (Grounded) // Если игрок на земле
+            if (Grounded)
             {
-                _fallTimeoutDelta = FallTimeout; // Время между моментом, когда игрок оказывается в воздухе, и моментом начала анимации падения
-                                                 // Чтобы не было анимации падения с совсем маленьких уступов и т.д.
+                _fallTimeoutDelta = FallTimeout;
 
-                if (_hasAnimator) // Указываем в аниматоре, что персонаж не прыгает и не в воздухе
+                if (_hasAnimator)
                 {
                     _animator.SetBool(_animIDJump, false);
                     _animator.SetBool(_animIDFreeFall, false);
                 }
 
-                // Если скорость падения меньше 0, делаем ровно -2 (чтобы бесконечно не росла скорость падения, пока мы все равно стоим на земле)
-                // Если сойти с какого-нибудь ящика например, скорость падения будет плавной за счет изначальной фиксации на -2 (будет уменьшаться)
                 if (_verticalVelocity < 0.0f)
                     _verticalVelocity = -2f;
 
-                // Проверяем ввод прыжка     (_input - это ClientPlayerInput, в котором регистрируются нажатия) и таймаут прыжка
-                if (_input.Jump && _jumpTimeoutDelta <= 0.0f) // Таймаут прыжка проверяем, чтобы не прыгать слишком часто
+                if (_input.Jump && _jumpTimeoutDelta <= 0.0f)
                 {
-                    // Устанавливаем вертиклаьную скорость - корень из высоты прыжка, умноженной на -2 и гравитацию (корень убирает знак -)
                     _verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
 
                     if (_hasAnimator)
-                        _animator.SetBool(_animIDJump, true); // Указываем в аниматоре, что персонаж прыгнул
+                        _animator.SetBool(_animIDJump, true);
                 }
 
-                // Если таймаут прыжка > 0, то мы его уменьшаем на время с последнего кадра (как только станет меньше 0, можно снова прыгать)
                 if (_jumpTimeoutDelta >= 0.0f)
                     _jumpTimeoutDelta -= Time.deltaTime;
             }
-            else // Если в воздухе
+            else
             {
-                // Восстанавливаем таймаут прыжка до изначального
                 _jumpTimeoutDelta = JumpTimeout;
 
-                // Аналогично таймауту прыжка, но уже таймаут падения
                 if (_fallTimeoutDelta >= 0.0f)
                     _fallTimeoutDelta -= Time.deltaTime;
                 else {
-                    // Как только таймаут падения закончился, в аниматоре указывается, что персонаж в свободном падении
                     if (_hasAnimator)
                         _animator.SetBool(_animIDFreeFall, true);
                 }
 
-                // Если мы в воздухе, мы делаем ввод прыжка false (это полный говнокод перезаписывать ввод и вообще пиздец, можешь прям так и сказать)
-                _input.Jump = false; // В видео он говорит, что этот бред нужно будет переписать в следующих роликах
+                _input.Jump = false;
             }
 
             // apply gravity over time if under terminal (multiply by delta time twice to linearly speed up over time)
-            if (_verticalVelocity < _terminalVelocity) // Если вертикальная скорость игрока ниже максимального ускорения свободного падения
-                _verticalVelocity += Gravity * Time.deltaTime; // Прибавляем к вертикальной скорости гравитацию * Time.deltaTime, падение короче
-                    // Время с последнего кадра, нужно, чтобы на компьютерах разной мощности все работало одинаково
+            if (_verticalVelocity < _terminalVelocity)
+                _verticalVelocity += Gravity * Time.deltaTime;
         }
 
         private static float ClampAngle(float lfAngle, float lfMin, float lfMax)

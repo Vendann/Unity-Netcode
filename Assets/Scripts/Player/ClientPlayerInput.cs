@@ -9,12 +9,12 @@ namespace Triwoinmag {
 		[Header("Character Input Values")]
 		public Vector2 move;
 		public Vector2 look;
-		[SerializeField] private bool jump; // Защищенная переменная ввода прыжка
-		public bool Jump { // Свойство, через которое осуществляется доступ к переменной
-			get { return jump; } // чтение, просто возвращаем jump
+		[SerializeField] private bool jump;
+		public bool Jump {
+			get { return jump; }
 			set {
-				jump = value; // запись, устанавливаем значение при вводе от игрока
-				if (IsOwner) // Если клиент - владелец объекта, то устанавливаем NetworkVariable для синхронизации
+				jump = value;
+				if (IsOwner)
 					NetVarJump.Value = value;
 			}
 		}
@@ -31,7 +31,7 @@ namespace Triwoinmag {
         [SerializeField] private PlayerInput _playerInput;
 
         public NetworkVariable<bool> NetVarJump = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone,
-            NetworkVariableWritePermission.Owner); // Переменная NetworkVariable для прыжка
+            NetworkVariableWritePermission.Owner);
 
         public override void OnNetworkSpawn() {
 			if (!IsOwner) return;
