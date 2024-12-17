@@ -1,7 +1,9 @@
 ﻿using UnityEngine;
 using Unity.Netcode;
 using Cinemachine;
-#if ENABLE_INPUT_SYSTEM 
+using System;
+
+#if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
 
@@ -11,9 +13,12 @@ namespace Triwoinmag {
 #if ENABLE_INPUT_SYSTEM 
     [RequireComponent(typeof(PlayerInput))]
 #endif
-    public class ThirdPersonController : NetworkBehaviour
+    public class CharacterMovement : NetworkBehaviour
     {
         [Header("Player")]
+        [SerializeField] private PlayerMoveState _playerMoveState;
+        public PlayerMoveState PlayerMoveState => _playerMoveState;
+
         [Tooltip("Move speed of the character in m/s")]
         public float MoveSpeed = 2.0f;
 
@@ -83,7 +88,7 @@ namespace Triwoinmag {
         private float _animationBlend;
         private float _targetRotation = 0.0f;
         private float _rotationVelocity;
-        private float _verticalVelocity;
+        [SerializeField] private float _verticalVelocity;
         private float _terminalVelocity = 53.0f;
 
         // timeout deltatime
@@ -96,6 +101,16 @@ namespace Triwoinmag {
         private int _animIDJump;
         private int _animIDFreeFall;
         private int _animIDMotionSpeed;
+
+        // Abilities
+        [SerializeField] private Vector3 _hookshotTargetPos; // TODO: To use on Chars - cache transform
+
+        // Delegates
+        public Action<Vector3> StartExecutingHookshot;
+        public Action StopExecutingHookshot;
+
+        // Links
+        [SerializeField] private AbilityMoveHookshot _abilityMoveHookshot;
 
 #if ENABLE_INPUT_SYSTEM 
         private PlayerInput _playerInput;
@@ -167,14 +182,64 @@ namespace Triwoinmag {
         {
             _hasAnimator = TryGetComponent(out _animator);
 
-            JumpAndGravity();
-            GroundedCheck();
-            Move();
+            if (_playerMoveState == PlayerMoveState.Normal) {
+                JumpAndGravity();
+                GroundedCheck();
+                Move();
+            }
+
+            else if (_playerMoveState == PlayerMoveState.ExecutingHookshot) {
+                ExecuteHookshot(_hookshotTargetPos);
+            }
         }
 
         private void LateUpdate()
         {
             CameraRotation();
+        }
+
+        public override void OnDestroy() {
+            base.OnDestroy();
+        }
+
+        // Abilities
+        public void SwitchHookshot() {
+            if (_playerMoveState != PlayerMoveState.ExecutingHookshot) {
+                _hookshotTargetPos = _abilityMoveHookshot.CheckFireHookshot();
+
+                if (_hookshotTargetPos != Vector3.zero) {
+                    StartHookshot(_hookshotTargetPos);
+                }
+            }
+
+            else if (_playerMoveState == PlayerMoveState.ExecutingHookshot)
+                StopHookshot();
+        }
+
+        private void ExecuteHookshot(Vector3 hookshotTargetPos) {
+            var hookshotMoveVector = _abilityMoveHookshot.ExecuteHookshot(hookshotTargetPos);
+
+            if (hookshotMoveVector != Vector3.zero)
+                _controller.Move(hookshotMoveVector);
+
+            else StopHookshot();
+        }
+
+        private void StartHookshot(Vector3 hookshotTargetPos) {
+            _playerMoveState = PlayerMoveState.ExecutingHookshot;
+
+            _animator.SetBool(_animIDFreeFall, true);
+            _animator.SetBool(_animIDGrounded, false);
+
+            StartExecutingHookshot?.Invoke(hookshotTargetPos);
+        }
+
+        private void StopHookshot() {
+            _playerMoveState = PlayerMoveState.Normal;
+
+            _verticalVelocity = Mathf.Clamp(_verticalVelocity, -5f, 5f);
+
+            StopExecutingHookshot?.Invoke();
         }
 
         private void AssignAnimationIDs()
@@ -381,7 +446,7 @@ namespace Triwoinmag {
             {
                 if (FootstepAudioClips.Length > 0)
                 {
-                    var index = Random.Range(0, FootstepAudioClips.Length);
+                    var index = UnityEngine.Random.Range(0, FootstepAudioClips.Length);
                     AudioSource.PlayClipAtPoint(FootstepAudioClips[index], transform.TransformPoint(_controller.center), FootstepAudioVolume);
                 }
             }
@@ -394,5 +459,9 @@ namespace Triwoinmag {
                 AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
             }
         }
+    }
+
+    public enum PlayerMoveState {
+        Normal, ExecutingHookshot
     }
 }
