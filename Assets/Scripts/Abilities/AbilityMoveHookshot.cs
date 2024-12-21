@@ -17,40 +17,35 @@ public class AbilityMoveHookshot : NetworkBehaviour
     [SerializeField] private LayerMask _layerMask = new LayerMask();
     [SerializeField] private GameObject _hookShotObject;
 
-    [Header("Debugging")]
-    public bool Debugging;
+    // Momentum
+    [SerializeField] private Vector3 _momentumAfterHookshotAborted; // Вектор направления, когда полет на крюк-кошке прерван
+    [SerializeField] private Vector3 _momentumAfterHookshotFinished; // Вектор направления, когда полет завершен нормально
 
     [Header("Links")]
     [SerializeField] private CharacterMovement _charMovement;
     [SerializeField] private LineRenderer _lineRenCircle;
     [SerializeField] private LineRenderer _lineRenShot;
-
+    
+    [Header("Debugging")]
+    public bool Debugging;
+    
     private void Start() {
-        // Подписываем методы включения и отключения визуализации выстрела крюком на делегат
-        // Чтобы не крюк вызывал визуализацию, а делегат в CharacterMovement
-        _charMovement.StartExecutingHookshot += VisualizeFiringHookshot; // На делегат старта полета подписываем включение визуализации
-        _charMovement.StopExecutingHookshot += VisualizeStopExecutingHookshot; // Не делегат остановки полета соответственно подписываем отключение
+        _charMovement.StartExecutingHookshot += VisualizeFiringHookshotServerRpc;
+        _charMovement.StopExecutingHookshot += VisualizeStopExecutingHookshotServerRpc;
     }
 
     public override void OnDestroy() {
-        // Переодпределяем метод, срабатывающий при удалении объекта со сцены, сначала вызываем базовый метод, затем пишем доп. логику ниже
         base.OnDestroy();
 
-        // Отписываемся от делегатов, когда объект уничтожается
-        _charMovement.StartExecutingHookshot -= VisualizeFiringHookshot;
-        _charMovement.StopExecutingHookshot -= VisualizeStopExecutingHookshot;
+        _charMovement.StartExecutingHookshot -= VisualizeFiringHookshotServerRpc;
+        _charMovement.StopExecutingHookshot -= VisualizeStopExecutingHookshotServerRpc;
     }
 
     private void Update() {
         if (IsOwner) {
-            if (Input.GetKeyDown(KeyCode.F) && CanFire) { // При нажатии на кнопку крюка-кошки
-                _charMovement.SwitchHookshot(); // Вызываем у CharacterMovement метод, меняющий режим движения на нужный
-                                                // А не как было до этого, что режим меняла сама крюк-кошка
+            if (Input.GetKeyDown(KeyCode.F) && CanFire) {
+                _charMovement.SwitchHookshot();
             }
-
-            _lineRenShot.SetPosition(0, transform.position);
-            
-            // _lineRenShot.SetPosition(1, _hookshotTargetPos); // TODO: for attaching to Chars
         }
     }
 
@@ -63,7 +58,12 @@ public class AbilityMoveHookshot : NetworkBehaviour
                 Debug.Log($"FireWeapons. Object: {hit.transform.gameObject.name} ray.origin: {ray.origin}, hit.point: {hit.point}");
                 //Debug.DrawRay(ray.origin, Camera.main.transform.TransformDirection(Vector3.forward) * hit.distance, Color.red, 3.0f);
             }
-            Instantiate(_hookShotObject, hit.point, Quaternion.identity);
+
+            var hookshotDir = (hit.point - transform.position).normalized; // От точки попадания отнимаем наши координаты, получаем вектор направления
+            _momentumAfterHookshotFinished = hookshotDir * 1.5f; // Второй переменной присваиваем результат выше и умножаем
+            // Ограничиваем у вектора ось Y, к которой в скобках прибавили 0.05, и присваиваем результат самой себе
+            _momentumAfterHookshotFinished.y = Mathf.Clamp(_momentumAfterHookshotFinished.y + 0.05f, 0.05f, 0.5f);
+
             return hit.point;
         }
         else {
@@ -72,13 +72,18 @@ public class AbilityMoveHookshot : NetworkBehaviour
     }
 
     public Vector3 ExecuteHookshot(Vector3 hookshotTargetPos) {
+        VisualizeExecutingHookshotServerRpc();
+
         if (Vector3.Distance(hookshotTargetPos, transform.position) < 1.5f) {
 
-            VisualizeStopExecutingHookshot();
+            VisualizeStopExecutingHookshotServerRpc(); // Теперь здесь вызываем визуализацию сервера и дальше по цепочке
             return Vector3.zero;
         }
 
         Vector3 hookshotDir = (hookshotTargetPos - transform.position).normalized;
+
+        // Momentum during movement
+        hookshotDir.y += _momentumAfterHookshotFinished.y / 2; // ХЗ
 
         float effectiveSpeed = Mathf.Clamp(Vector3.Distance(hookshotTargetPos, transform.position) * _hookshotSpeed,
             _minHookshotSpeed, _maxHookshotSpeed) * Time.deltaTime;
@@ -86,15 +91,63 @@ public class AbilityMoveHookshot : NetworkBehaviour
         return hookshotDir * effectiveSpeed;
     }
 
-    private void VisualizeFiringHookshot(Vector3 hitPos) {
+    // Метод для вычисления вектора направления
+    public Vector3 CalculateMomentumAfterHookshot(bool aborted) {
+        if (aborted) { // Если полет на крюк-кошке был прерван и переменная равна true (aborted - преравнный, все логично)
+            // То находим направление взгляда камеры (типа игрок туда смотрит в этот момент)
+            // Нормализуем полученный вектор и умножаем его на 2, результат всего этого присваиваем переменной слева
+            _momentumAfterHookshotAborted = Camera.main.ScreenPointToRay(
+                new Vector2(Screen.width * 0.5f, Screen.height * 0.5f)).direction.normalized * 2f;
+            return _momentumAfterHookshotAborted; // Возвращаем переменную
+        }
+        else {
+            return _momentumAfterHookshotFinished; // Иначе возвращаем другую переменню, которая будет вычисляться в методе CheckFireHookshot
+        }
+    }
+
+    // Сделали метод, выполняющийся на сервере, т.е. сервер получает всю информацию и вызывает у клиентов метод для визуализации
+    [ServerRpc]
+    private void VisualizeFiringHookshotServerRpc(Vector3 hitPos) {
+        // Перенесли создание шарика в точке попадания сюда, при этом это будет сетевой объект
+        // Т.е. переменной слева мы приваиваем результат метода GetComponent, который ищет NetworkObject на объекте, созданном с помощью Instantiate
+        var hookshotNetObj = Instantiate(_hookShotObject, hitPos, Quaternion.identity).GetComponent<NetworkObject>();
+        hookshotNetObj.Spawn(); // Метод у класса NetworkObject, просто спавнит объект на всех машинах
+
+        VisualizeFiringHookshotClientRpc(hitPos);
+    }
+
+    // Визуализация у клиентов
+    [ClientRpc]
+    private void VisualizeFiringHookshotClientRpc(Vector3 hitPos) {
         _lineRenCircle.enabled = true;
         _lineRenShot.enabled = true;
         _lineRenShot.SetPosition(0, transform.position);
         _lineRenShot.SetPosition(1, hitPos);
     }
 
-    private void VisualizeStopExecutingHookshot() {
+    // Тоже выполняется на сервере, вызывает метод отключения визуализации
+    [ServerRpc]
+    private void VisualizeStopExecutingHookshotServerRpc() {
+        VisualizeStopExecutingHookshotClientRpc();
+    }
+
+    // Выключение визуализации у клиентов
+    [ClientRpc]
+    private void VisualizeStopExecutingHookshotClientRpc() {
         _lineRenCircle.enabled = false;
         _lineRenShot.enabled = false;
+    }
+
+    // Метод, вызывающий обновление координат луча, работает на сервере
+    [ServerRpc]
+    private void VisualizeExecutingHookshotServerRpc() {
+        VisualizeExecutingHookshotClientRpc();
+    }
+
+    // Код из Update, двигающий координаты луча в соответствии с игроком, вынесли в отдельный метод для клиента
+    [ClientRpc]
+    private void VisualizeExecutingHookshotClientRpc() {
+        _lineRenShot.SetPosition(0, transform.position);
+        // _lineRenShot.SetPosition(1, _hookshotTargetPos);
     }
 }

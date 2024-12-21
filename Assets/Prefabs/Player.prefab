@@ -1542,9 +1542,10 @@ MonoBehaviour:
   BottomClamp: -30
   CameraAngleOverride: 0
   LockCameraPosition: 0
+  _verticalVelocity: 0
+  _momentumAfterSpecialMovement: {x: 0, y: 0, z: 0}
   _hookshotTargetPos: {x: 0, y: 0, z: 0}
   _abilityMoveHookshot: {fileID: 3992752587593563394}
-  _controller: {fileID: 0}
 --- !u!114 &2400427735321289901
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2999,10 +3000,12 @@ MonoBehaviour:
     m_Bits: 3145729
   _hookShotObject: {fileID: 1334092228834590237, guid: bff25c424c40047448a8e8a7179a1a76,
     type: 3}
-  Debugging: 0
+  _momentumAfterHookshotAborted: {x: 0, y: 0, z: 0}
+  _momentumAfterHookshotFinished: {x: 0, y: 0, z: 0}
   _charMovement: {fileID: 3403687665917513728}
   _lineRenCircle: {fileID: 8144849377550420712}
   _lineRenShot: {fileID: 5449445604396469116}
+  Debugging: 0
 --- !u!120 &5449445604396469116 stripped
 LineRenderer:
   m_CorrespondingSourceObject: {fileID: 5714349739097975527, guid: ca1effe0cc0f9ed45b0576253d27af70,
