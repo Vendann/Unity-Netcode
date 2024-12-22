@@ -18,8 +18,8 @@ public class AbilityMoveHookshot : NetworkBehaviour
     [SerializeField] private GameObject _hookShotObject;
 
     // Momentum
-    [SerializeField] private Vector3 _momentumAfterHookshotAborted; // Вектор направления, когда полет на крюк-кошке прерван
-    [SerializeField] private Vector3 _momentumAfterHookshotFinished; // Вектор направления, когда полет завершен нормально
+    [SerializeField] private Vector3 _momentumAfterHookshotAborted;
+    [SerializeField] private Vector3 _momentumAfterHookshotFinished;
 
     [Header("Links")]
     [SerializeField] private CharacterMovement _charMovement;
@@ -59,9 +59,8 @@ public class AbilityMoveHookshot : NetworkBehaviour
                 //Debug.DrawRay(ray.origin, Camera.main.transform.TransformDirection(Vector3.forward) * hit.distance, Color.red, 3.0f);
             }
 
-            var hookshotDir = (hit.point - transform.position).normalized; // От точки попадания отнимаем наши координаты, получаем вектор направления
-            _momentumAfterHookshotFinished = hookshotDir * 1.5f; // Второй переменной присваиваем результат выше и умножаем
-            // Ограничиваем у вектора ось Y, к которой в скобках прибавили 0.05, и присваиваем результат самой себе
+            var hookshotDir = (hit.point - transform.position).normalized;
+            _momentumAfterHookshotFinished = hookshotDir * 1.5f;
             _momentumAfterHookshotFinished.y = Mathf.Clamp(_momentumAfterHookshotFinished.y + 0.05f, 0.05f, 0.5f);
 
             return hit.point;
@@ -76,7 +75,7 @@ public class AbilityMoveHookshot : NetworkBehaviour
 
         if (Vector3.Distance(hookshotTargetPos, transform.position) < 1.5f) {
 
-            VisualizeStopExecutingHookshotServerRpc(); // Теперь здесь вызываем визуализацию сервера и дальше по цепочке
+            VisualizeStopExecutingHookshotServerRpc();
             return Vector3.zero;
         }
 
@@ -91,32 +90,25 @@ public class AbilityMoveHookshot : NetworkBehaviour
         return hookshotDir * effectiveSpeed;
     }
 
-    // Метод для вычисления вектора направления
     public Vector3 CalculateMomentumAfterHookshot(bool aborted) {
-        if (aborted) { // Если полет на крюк-кошке был прерван и переменная равна true (aborted - преравнный, все логично)
-            // То находим направление взгляда камеры (типа игрок туда смотрит в этот момент)
-            // Нормализуем полученный вектор и умножаем его на 2, результат всего этого присваиваем переменной слева
+        if (aborted) {
             _momentumAfterHookshotAborted = Camera.main.ScreenPointToRay(
                 new Vector2(Screen.width * 0.5f, Screen.height * 0.5f)).direction.normalized * 2f;
-            return _momentumAfterHookshotAborted; // Возвращаем переменную
+            return _momentumAfterHookshotAborted;
         }
         else {
-            return _momentumAfterHookshotFinished; // Иначе возвращаем другую переменню, которая будет вычисляться в методе CheckFireHookshot
+            return _momentumAfterHookshotFinished;
         }
     }
 
-    // Сделали метод, выполняющийся на сервере, т.е. сервер получает всю информацию и вызывает у клиентов метод для визуализации
     [ServerRpc]
     private void VisualizeFiringHookshotServerRpc(Vector3 hitPos) {
-        // Перенесли создание шарика в точке попадания сюда, при этом это будет сетевой объект
-        // Т.е. переменной слева мы приваиваем результат метода GetComponent, который ищет NetworkObject на объекте, созданном с помощью Instantiate
         var hookshotNetObj = Instantiate(_hookShotObject, hitPos, Quaternion.identity).GetComponent<NetworkObject>();
-        hookshotNetObj.Spawn(); // Метод у класса NetworkObject, просто спавнит объект на всех машинах
+        hookshotNetObj.Spawn();
 
         VisualizeFiringHookshotClientRpc(hitPos);
     }
 
-    // Визуализация у клиентов
     [ClientRpc]
     private void VisualizeFiringHookshotClientRpc(Vector3 hitPos) {
         _lineRenCircle.enabled = true;
@@ -125,26 +117,22 @@ public class AbilityMoveHookshot : NetworkBehaviour
         _lineRenShot.SetPosition(1, hitPos);
     }
 
-    // Тоже выполняется на сервере, вызывает метод отключения визуализации
     [ServerRpc]
     private void VisualizeStopExecutingHookshotServerRpc() {
         VisualizeStopExecutingHookshotClientRpc();
     }
 
-    // Выключение визуализации у клиентов
     [ClientRpc]
     private void VisualizeStopExecutingHookshotClientRpc() {
         _lineRenCircle.enabled = false;
         _lineRenShot.enabled = false;
     }
 
-    // Метод, вызывающий обновление координат луча, работает на сервере
     [ServerRpc]
     private void VisualizeExecutingHookshotServerRpc() {
         VisualizeExecutingHookshotClientRpc();
     }
 
-    // Код из Update, двигающий координаты луча в соответствии с игроком, вынесли в отдельный метод для клиента
     [ClientRpc]
     private void VisualizeExecutingHookshotClientRpc() {
         _lineRenShot.SetPosition(0, transform.position);

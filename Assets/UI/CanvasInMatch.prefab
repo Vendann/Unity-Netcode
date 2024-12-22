@@ -325,7 +325,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cb0e32af18a57c94ea15421a609735ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _scoreText: {fileID: 0}
+  _scoreText: {fileID: 7086146565742051005}
 --- !u!114 &7086146565742051005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -427,7 +427,7 @@ GameObject:
   - component: {fileID: 5550703524051486329}
   - component: {fileID: 234947439394472364}
   m_Layer: 5
-  m_Name: InMatch Panel
+  m_Name: InMatch MenuEsc Panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -501,8 +501,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1677701570684126550}
   - component: {fileID: 6259395067722374503}
+  - component: {fileID: 4417047988808239359}
   m_Layer: 5
-  m_Name: UI InMatch Player
+  m_Name: UI InMatch PlayerHUD
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -536,6 +537,20 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3547993179881133740}
   m_CullTransparentMesh: 1
+--- !u!114 &4417047988808239359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3547993179881133740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f17d9a4df365fb749bec6aa2d284c663, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _inMatchPlayerHUDPanel: {fileID: 6112796734285295431}
+  _connectionManager: {fileID: 0}
 --- !u!1 &6112796734285295431
 GameObject:
   m_ObjectHideFlags: 0
@@ -548,12 +563,12 @@ GameObject:
   - component: {fileID: 794211216860629204}
   - component: {fileID: 4012772290235267814}
   m_Layer: 5
-  m_Name: PlayerStats Panel
+  m_Name: InMatch PlayerHUD Panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1400237270527476943
 RectTransform:
   m_ObjectHideFlags: 0
@@ -625,7 +640,7 @@ GameObject:
   - component: {fileID: 1619647967232897282}
   - component: {fileID: 3981077210489294560}
   m_Layer: 5
-  m_Name: UI InMatch
+  m_Name: UI InMatch MenuEsc
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -671,7 +686,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 176ac6511cf433747a70f06012a713ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _inMatchPanel: {fileID: 2128658189550530634}
+  _inMatchMenuEscPanel: {fileID: 2128658189550530634}
   _exitButton: {fileID: 4975817135840615336}
   _connectionManager: {fileID: 0}
 --- !u!1 &6720412664519975447

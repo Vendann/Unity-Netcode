@@ -16,7 +16,6 @@ namespace Triwoinmag {
 
         public void CharScoreChanged(int newValue) {
 	        _scoreText.text = newValue.ToString();
-
         }
     }
 }
