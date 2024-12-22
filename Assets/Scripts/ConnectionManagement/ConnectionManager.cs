@@ -58,6 +58,7 @@ namespace Triwoinmag.ConnectionManagement {
         [SerializeField] private GameObject _playerPrefabBlue;
 
         private Dictionary<ulong, ConnectionPayload> _playersClientIdToConnectionPayload = new Dictionary<ulong, ConnectionPayload>();
+
         [SerializeField] private List<ConnectionPayload> _listPlayersConnectionPayload = new List<ConnectionPayload>();
 
         public Action MatchStarted;
@@ -84,6 +85,9 @@ namespace Triwoinmag.ConnectionManagement {
 
             NetworkManager.ConnectionApprovalCallback += ApprovalCheck;
             NetworkManager.StartHost();
+
+            // TODO: ManagerMatch
+            MatchStarted?.Invoke();
         }
 
         public void ConnectAsClient(string playerName) {
@@ -100,6 +104,9 @@ namespace Triwoinmag.ConnectionManagement {
             NetworkManager.NetworkConfig.ConnectionData = payloadBytes;
 
             NetworkManager.StartClient();
+
+            // TODO: ManagerMatch
+            MatchStarted?.Invoke();
         }
 
         public void Shutdown() {
@@ -114,20 +121,15 @@ namespace Triwoinmag.ConnectionManagement {
         private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response) {
             Debug.Log($"ConnectionManager.ApprovalCheck");
 
-            // The client identifier to be authenticated
             var clientId = request.ClientNetworkId;
-
-            // Additional connection data defined by user code
             var connectionData = request.Payload;
 
             if (connectionData.Length > k_MaxConnectPayload) {
-                // If connectionData too high, deny immediately to avoid wasting time on the server. This is intended as
-                // a bit of light protection against DOS attacks that rely on sending silly big buffers of garbage.
                 response.Approved = false;
                 return;
             }
-
             var payload = System.Text.Encoding.UTF8.GetString(connectionData);
+
             var connectionPayload = JsonUtility.FromJson<ConnectionPayload>(payload); // https://docs.unity3d.com/2020.2/Documentation/Manual/JSONSerialization.html
 
             if (connectionPayload.IsRed) {
@@ -139,7 +141,6 @@ namespace Triwoinmag.ConnectionManagement {
 
             _ = CreateCustomPlayerObjectAsync(clientId, _playerPrefab);
 
-            // Your approval logic determines the following values
             response.Approved = true;
             response.CreatePlayerObject = false;
 
@@ -154,16 +155,16 @@ namespace Triwoinmag.ConnectionManagement {
 
             // If response.Approved is false, you can provide a message that explains the reason why via ConnectionApprovalResponse.Reason
             // On the client-side, NetworkManager.DisconnectReason will be populated with this message via DisconnectReasonMessage
+
             response.Reason = "Some reason for not approving the client";
 
             // If additional approval steps are needed, set this to true until the additional steps are complete
             // once it transitions from true to false the connection approval response will be processed.
+
             response.Pending = false;
 
             _playersClientIdToConnectionPayload[clientId] = connectionPayload;
             _listPlayersConnectionPayload.Add(connectionPayload);
-
-            MatchStarted?.Invoke();
         }
 
         private async Task CreateCustomPlayerObjectAsync(ulong clientId, GameObject playerPrefab) {

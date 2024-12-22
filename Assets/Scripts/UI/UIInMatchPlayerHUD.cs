@@ -7,12 +7,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 namespace Triwoinmag {
-    public class UIInMatch : MonoBehaviour {
+    public class UIInMatchPlayerHUD : MonoBehaviour {
 
-	    [SerializeField] private GameObject _inMatchPanel;
-		[SerializeField] private Button _exitButton;
-
-
+	    [SerializeField] private GameObject _inMatchPlayerHUDPanel;
 
 	    [Header("Links")]
 	    [SerializeField] private ConnectionManager _connectionManager;
@@ -26,26 +23,15 @@ namespace Triwoinmag {
 	    private void Start() {
 		    _connectionManager.MatchStarted += TurnOnPanel;
 	    }
-	    private void Update() {
-			if (Input.GetKeyDown(KeyCode.Escape)) {
-				SwitchPanel();
-			}
-		}
+	    // private void Update() {}
 
 		private void OnDestroy() {
 		    _connectionManager.MatchStarted -= TurnOnPanel;
 	    }
 
-
-		public void ButtonExit() {
-			_connectionManager.Shutdown();
-
-			SwitchPanel();
-		}
-
 		private void SwitchPanel() {
 			//_inMatchPanel.SetActive(!_inMatchPanel.activeSelf);
-			if (_inMatchPanel.activeSelf) {
+			if (_inMatchPlayerHUDPanel.activeSelf) {
 				TurnOffPanel();
 			}
 			else {
@@ -53,14 +39,10 @@ namespace Triwoinmag {
 			}
 		}
 		private void TurnOnPanel() {
-			_inMatchPanel.SetActive(true);
-			Cursor.lockState = CursorLockMode.None;
-			Cursor.visible = true;
+			_inMatchPlayerHUDPanel.SetActive(true);
 		}
 		private void TurnOffPanel() {
-			_inMatchPanel.SetActive(false);
-			Cursor.lockState = CursorLockMode.Locked;
-			Cursor.visible = false;
+			_inMatchPlayerHUDPanel.SetActive(false);
 		}
 	}
 }

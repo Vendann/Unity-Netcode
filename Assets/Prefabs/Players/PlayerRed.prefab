@@ -1402,6 +1402,7 @@ GameObject:
   - component: {fileID: 4881353074454944421}
   - component: {fileID: 2877258811646697107}
   - component: {fileID: 8655082911514297298}
+  - component: {fileID: 5556952158812933035}
   m_Layer: 22
   m_Name: PlayerRed
   m_TagString: Player
@@ -1760,6 +1761,21 @@ MonoBehaviour:
   <MaxHealth>k__BackingField: 100
   OnDeathPrefab: {fileID: 1370254330202522708, guid: 5f3bf930d814fd543bcd42e4849fa7ff,
     type: 3}
+--- !u!114 &5556952158812933035
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4828296708284526465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffe4f1d709f76a941ad130aa687bc3db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _uIPlayerCharScore: {fileID: 0}
+  _charScore:
+    m_InternalValue: 0
 --- !u!1 &4906993818421545689
 GameObject:
   m_ObjectHideFlags: 0
