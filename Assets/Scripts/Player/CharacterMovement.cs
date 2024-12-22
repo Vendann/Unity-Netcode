@@ -103,7 +103,7 @@ namespace Triwoinmag {
         private int _animIDMotionSpeed;
 
         // Abilities
-        [SerializeField] private Vector3 _momentumAfterSpecialMovement;
+        [SerializeField] private Vector3 _momentumAfterSpecialMovement; // Тут мы вычисляем вектор направления, на основе которого добавляем инерцию после крюка
         [SerializeField] private Vector3 _hookshotTargetPos; // TODO: To use on Chars - cache transform
 
         // Delegates
@@ -214,7 +214,7 @@ namespace Triwoinmag {
             }
 
             else if (_playerMoveState == PlayerMoveState.ExecutingHookshot)
-                StopHookshot(true);
+                StopHookshot(true); // Здесь мы отправляем true на переменную aborted, потому что мы отменили полет и режим поменялся
         }
 
         private void ExecuteHookshot(Vector3 hookshotTargetPos) {
@@ -223,7 +223,7 @@ namespace Triwoinmag {
             if (hookshotMoveVector != Vector3.zero)
                 _controller.Move(hookshotMoveVector);
 
-            else StopHookshot(false);
+            else StopHookshot(false); // Тут отправляем false, потому что ничего не отменяли и игрок сам прилетел
         }
 
         private void StartHookshot(Vector3 hookshotTargetPos) {
@@ -232,14 +232,17 @@ namespace Triwoinmag {
             _animator.SetBool(_animIDFreeFall, true);
             _animator.SetBool(_animIDGrounded, false);
 
-            _verticalVelocity = 0;
+            _verticalVelocity = 0; // В начале полета на крюк-кошке обнуляем вертикальное ускорение
 
             StartExecutingHookshot?.Invoke(hookshotTargetPos);
         }
 
-        private void StopHookshot(bool aborted) {
+        private void StopHookshot(bool aborted) { // В скобках aborted, который показывает, прервали ли мы полет или долетели до конца
             _playerMoveState = PlayerMoveState.Normal;
 
+            // Вызываем метод, вычисляющий инерцию у компонента крюка-кошки, результат присваиваем переменной
+            // Я везде в комментариях писал направление, но вычисляем мы инерцию, но по сути это тоже направление, типа в какую сторону даем инерцию
+            // Говно короче какое-то, а не код
             _momentumAfterSpecialMovement = _abilityMoveHookshot.CalculateMomentumAfterHookshot(aborted);
 
             StopExecutingHookshot?.Invoke();
@@ -353,6 +356,7 @@ namespace Triwoinmag {
             // move the player
             // Momentum after special movement
 
+            // В метод движения мы добавляем полученную инерцию к каждой оси и умножаем на deltaTime, чтобы у всех инерция вычислялась одинаково
             _controller.Move(targetDirection.normalized * (_speed * Time.deltaTime) +
                              new Vector3(
                                  _momentumAfterSpecialMovement.x,
@@ -360,12 +364,16 @@ namespace Triwoinmag {
                                  _momentumAfterSpecialMovement.z)
                              * Time.deltaTime);
 
+            // Если magnitude, т.е. длина вектора больше 0
             if (_momentumAfterSpecialMovement.magnitude > 0f) {
+                // То мы отнимаем от вектора сам вектор, умноженный на 3 и deltaTime
                 _momentumAfterSpecialMovement -= _momentumAfterSpecialMovement * 3f * Time.deltaTime;
+                // Если уже меньше 0.05, то приравниваем его к 0
                 if (_momentumAfterSpecialMovement.magnitude < 0.05f) {
                     _momentumAfterSpecialMovement = Vector3.zero;
                 }
             }
+            // Вся эта дичь работает каждый кадр
 
             // update animator if using character
             if (_hasAnimator)
